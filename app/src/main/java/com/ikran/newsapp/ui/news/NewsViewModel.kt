@@ -22,6 +22,9 @@ class NewsViewModel(app : Application, val newsRepository: NewsRepository)
     val topNews: MutableLiveData<Resource<NewsApiResponse>> = MutableLiveData()
     var topNewsPage  = 1
 
+    val searchNews: MutableLiveData<Resource<NewsApiResponse>> = MutableLiveData()
+    var searchNewsPage  = 1
+
     init {
         getTopNews(countryCode = "in")
 
@@ -32,12 +35,23 @@ class NewsViewModel(app : Application, val newsRepository: NewsRepository)
         safeTopNewsCall(countryCode, pageNumber)
     }
 
-    fun searchNews(query:String) = viewModelScope.launch {
-        val response = newsRepository.searchNews(query, 10)
-        Log.i("Search news --API Response --", "${response.body()}")
+    fun searchNews(query:String, pageNumber:Int =10) = viewModelScope.launch {
+        safeSearchNewsCall(query, pageNumber)
     }
 
+
     private fun handleTopNewsResponse(response: Response<NewsApiResponse>):Resource<NewsApiResponse>{
+        if(response.isSuccessful){
+            response.body()?.let {
+                    resultResponse ->
+                return  Resource.Success(resultResponse)
+            }
+        }
+        return Resource.Error(response.message())
+
+    }
+
+    private fun handleSearchNewsResponse(response: Response<NewsApiResponse>):Resource<NewsApiResponse>{
         if(response.isSuccessful){
             response.body()?.let {
                     resultResponse ->
@@ -82,5 +96,22 @@ class NewsViewModel(app : Application, val newsRepository: NewsRepository)
 
     }
 
+    private suspend fun safeSearchNewsCall(query: String, pageNumber: Int) {
+       searchNews.postValue(Resource.Loading())
+        try{
+        if(hasInternetConnection()){
+            val response = newsRepository.searchNews(query, pageNumber)
+            searchNews.postValue(handleSearchNewsResponse(response))
+        }else{
+            searchNews.postValue(Resource.Error("No Internet Connection - Actual"))
+        }
+        }catch (t: Throwable){
+            when(t){
+                is IOException -> searchNews.postValue(Resource.Error("Network Failure"))
+                else -> searchNews.postValue(Resource.Error("Conversion Error"))
+            }
+        }
+
+    }
 
 }

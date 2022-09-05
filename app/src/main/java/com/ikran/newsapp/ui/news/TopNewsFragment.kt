@@ -7,8 +7,10 @@ import androidx.fragment.app.Fragment
 import android.widget.Toast
 import androidx.appcompat.widget.SearchView
 import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.ikran.newsapp.R
+import com.ikran.newsapp.adapter.NewsAdapter
 import com.ikran.newsapp.util.Resource
 
 class TopNewsFragment : Fragment() {
@@ -20,11 +22,12 @@ class TopNewsFragment : Fragment() {
 
     lateinit var viewModel: NewsViewModel
     private lateinit var recyclerView: RecyclerView
-
+    lateinit var newsAdapter: NewsAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
+        newsAdapter = NewsAdapter()
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -60,49 +63,41 @@ class TopNewsFragment : Fragment() {
     ): View {
         val view = inflater.inflate(R.layout.fragment_top_news, container, false)
         recyclerView = view.findViewById(R.id.recyclerViewPopularNews)
-
+        recyclerView.apply {
+            adapter = newsAdapter
+            layoutManager = LinearLayoutManager(activity)
+        }
         return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        runCatching {
-
         viewModel = (activity as NewsActivity).viewModel
-
-
 
         viewModel.topNews.observe(viewLifecycleOwner, Observer { response ->
             when(response){
                 is Resource.Success -> {
                     hideProgressBar()
                     response.data?.let { newsResponse ->
-                       // newsAdapter.differ.submitList(newsResponse.articles)
-                    Log.i(logTag, newsResponse.toString())
+                        newsAdapter.differ.submitList(newsResponse.articles)
+                        //Log.i(logTag, newsResponse.toString())
                     }
                 }
-
                 is Resource.Error -> {
                     hideProgressBar()
                     try{
-                    response.message?.let { message ->
-                        Log.e(logTag, message)
-                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-                    }
+                        response.message?.let { message ->
+                            Log.e(logTag, message)
+                            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        }
                     }catch (e: Exception){
                         System.out.println("Error Fragment --- "+ e.message)
                     }
                 }
-
                 is Resource.Loading -> { showProgressBar()}
                 //else -> {}
             }
-
         })
-
-        }
-
     }
 
     private fun showProgressBar() {
@@ -113,10 +108,10 @@ class TopNewsFragment : Fragment() {
         Log.e(logTag, "hideProgressBar")
     }
 
- /*   override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    /*   override fun onActivityCreated(savedInstanceState: Bundle?) {
+           super.onActivityCreated(savedInstanceState)
 
-        //  Use the ViewModel
-    }*/
+           //  Use the ViewModel
+       }*/
 
 }
